@@ -6,9 +6,6 @@
 @description('Container App managed identity principal ID')
 param containerAppPrincipalId string
 
-@description('Cosmos DB account name')
-param cosmosAccountName string
-
 @description('Storage account name')
 param storageAccountName string
 
@@ -19,25 +16,9 @@ param openaiAccountId string
 param searchServiceName string
 
 // Role definition IDs
-var cosmosDbDataContributor = '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor
 var storageBlobContributor = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 var cognitiveServicesUser = 'a97b65f3-24c7-4388-baec-2e87135dc908'
 var searchIndexDataContributor = '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
-
-// --- Cosmos DB Data Contributor ---
-resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-02-15-preview' existing = {
-  name: cosmosAccountName
-}
-
-resource cosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-02-15-preview' = {
-  parent: cosmosAccount
-  name: guid(cosmosAccount.id, containerAppPrincipalId, cosmosDbDataContributor)
-  properties: {
-    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDbDataContributor}'
-    principalId: containerAppPrincipalId
-    scope: cosmosAccount.id
-  }
-}
 
 // --- Storage Blob Data Contributor ---
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
@@ -54,10 +35,14 @@ resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
   }
 }
 
-// --- Cognitive Services OpenAI User ---
+// --- Cognitive Services OpenAI User (scoped to the OpenAI account) ---
+resource openaiAccount 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' existing = {
+  name: split(openaiAccountId, '/')[8]
+}
+
 resource openaiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(openaiAccountId, containerAppPrincipalId, cognitiveServicesUser)
-  scope: resourceGroup
+  name: guid(openaiAccount.id, containerAppPrincipalId, cognitiveServicesUser)
+  scope: openaiAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUser)
     principalId: containerAppPrincipalId
@@ -79,3 +64,6 @@ resource searchRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-0
     principalType: 'ServicePrincipal'
   }
 }
+
+// Note: Cosmos DB RBAC uses SQL role assignments which are handled
+// within the Cosmos DB module or via az CLI post-deployment.

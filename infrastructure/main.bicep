@@ -121,12 +121,12 @@ module keyvault 'modules/keyvault.bicep' = {
   }
 }
 
-// --- Step 8: Static Web App ---
+// --- Step 8: Static Web App (westeurope — SWA not available in swedencentral) ---
 module staticWebApp 'modules/static-web-app.bicep' = {
   name: 'step8-static-web-app'
   scope: resourceGroup
   params: {
-    location: location
+    location: 'westeurope'
     environmentName: environmentName
     projectName: projectName
   }
@@ -138,7 +138,6 @@ module rbac 'modules/rbac.bicep' = {
   scope: resourceGroup
   params: {
     containerAppPrincipalId: containerApps.outputs.containerAppPrincipalId
-    cosmosAccountName: cosmosdb.outputs.cosmosAccountName
     storageAccountName: storage.outputs.storageAccountName
     openaiAccountId: openai.outputs.openaiAccountId
     searchServiceName: aiSearch.outputs.searchServiceName

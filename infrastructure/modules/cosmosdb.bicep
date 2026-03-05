@@ -148,5 +148,6 @@ resource styleProfilesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDataba
 
 // --- Outputs ---
 output cosmosAccountId string = cosmosAccount.id
+output cosmosAccountName string = cosmosAccount.name
 output cosmosEndpoint string = cosmosAccount.properties.documentEndpoint
 output cosmosDatabaseName string = databaseName

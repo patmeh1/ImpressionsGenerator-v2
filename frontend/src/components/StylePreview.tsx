@@ -9,6 +9,8 @@ interface StylePreviewProps {
 }
 
 export default function StylePreview({ styleProfile }: StylePreviewProps) {
+  const abbreviations = Object.entries(styleProfile.abbreviation_map || {});
+
   return (
     <div className="card p-5 space-y-4">
       <h3 className="section-heading flex items-center gap-2">
@@ -22,15 +24,15 @@ export default function StylePreview({ styleProfile }: StylePreviewProps) {
           Common Abbreviations
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {styleProfile.abbreviations.length === 0 ? (
+          {abbreviations.length === 0 ? (
             <span className="text-xs text-slate-400">None detected</span>
           ) : (
-            styleProfile.abbreviations.map((abbr, i) => (
+            abbreviations.map(([abbr, full], i) => (
               <span
                 key={i}
                 className="inline-block px-2 py-0.5 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 text-xs rounded-md font-mono"
               >
-                {abbr}
+                {abbr} = {full}
               </span>
             ))
           )}
@@ -40,13 +42,13 @@ export default function StylePreview({ styleProfile }: StylePreviewProps) {
       <div>
         <div className="flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
           <Sparkles size={14} />
-          Typical Phrases
+          Sample Phrases
         </div>
         <ul className="space-y-1">
-          {styleProfile.common_phrases.length === 0 ? (
+          {(styleProfile.sample_phrases || []).length === 0 ? (
             <li className="text-xs text-slate-400">None detected</li>
           ) : (
-            styleProfile.common_phrases.map((phrase, i) => (
+            styleProfile.sample_phrases.map((phrase, i) => (
               <li
                 key={i}
                 className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 rounded px-2 py-1 font-mono"
@@ -64,15 +66,14 @@ export default function StylePreview({ styleProfile }: StylePreviewProps) {
           Section Order
         </div>
         <ol className="list-decimal list-inside text-xs text-slate-600 dark:text-slate-400 space-y-0.5">
-          {styleProfile.section_order.map((section, i) => (
+          {(styleProfile.section_ordering || []).map((section, i) => (
             <li key={i}>{section}</li>
           ))}
         </ol>
       </div>
 
-      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500">
-        <span>Tone: <strong className="text-slate-700 dark:text-slate-300">{styleProfile.tone}</strong></span>
-        <span>Avg length: <strong className="text-slate-700 dark:text-slate-300">{styleProfile.avg_length} words</strong></span>
+      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-500">
+        <span>Vocabulary: <strong className="text-slate-700 dark:text-slate-300">{(styleProfile.vocabulary_patterns || []).slice(0, 5).join(', ') || 'None'}</strong></span>
       </div>
     </div>
   );

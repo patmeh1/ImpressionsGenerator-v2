@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 const REPORT_TYPES = ['All', 'CT', 'MRI', 'X-ray', 'PET', 'Ultrasound'];
-const STATUSES = ['All', 'draft', 'approved', 'rejected'];
+const STATUSES = ['All', 'draft', 'edited', 'final'];
 
 export default function HistoryPage() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -155,10 +155,10 @@ export default function HistoryPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          r.status === 'approved'
+                          r.status === 'final'
                             ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                            : r.status === 'rejected'
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            : r.status === 'edited'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
                               : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
                         }`}
                       >

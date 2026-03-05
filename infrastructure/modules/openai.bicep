@@ -13,8 +13,8 @@ param environmentName string
 @description('Project name used for resource naming')
 param projectName string
 
-// 30K TPM for dev/staging, 120K TPM for prod
-var modelCapacity = environmentName == 'prod' ? 120 : 30
+// 10K TPM for dev, 30K for staging, 120K for prod
+var modelCapacity = environmentName == 'prod' ? 120 : environmentName == 'staging' ? 30 : 10
 
 // --- Azure OpenAI Account ---
 resource openaiAccount 'Microsoft.CognitiveServices/accounts@2024-04-01-preview' = {
@@ -39,14 +39,14 @@ resource gpt52Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
   parent: openaiAccount
   name: 'gpt-52'
   sku: {
-    name: 'Standard'
+    name: 'GlobalStandard'
     capacity: modelCapacity
   }
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-5.2'
-      version: '2026-01-01'
+      name: 'gpt-5.2-chat'
+      version: '2025-12-11'
     }
     raiPolicyName: 'Microsoft.DefaultV2'
   }
