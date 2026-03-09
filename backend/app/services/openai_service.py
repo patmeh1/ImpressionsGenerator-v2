@@ -1,10 +1,16 @@
-"""Azure OpenAI service for clinical report generation — v2."""
+"""Azure OpenAI service — MAF + Azure AI Foundry SDK 2.x.
+
+Uses AIProjectClient (azure-ai-projects) for project-based resource
+discovery and inference.  Falls back to direct AzureOpenAI when no
+Foundry connection string is configured.
+"""
 
 import json
 import logging
 from typing import Any
 
-from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
 from openai import AzureOpenAI
 
 from app.config import settings
@@ -13,28 +19,57 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIService:
-    """Manages interactions with Azure OpenAI GPT-5.2."""
+    """Manages AI interactions via Azure AI Foundry SDK 2.x (AIProjectClient).
+
+    Falls back to direct AzureOpenAI client when no Foundry connection string
+    is configured, ensuring backward compatibility.
+    """
 
     def __init__(self) -> None:
-        self._client: AzureOpenAI | None = None
+        self._project_client: AIProjectClient | None = None
+        self._openai_client: AzureOpenAI | None = None
+        self._deployment: str = settings.FOUNDRY_MODEL_DEPLOYMENT or settings.OPENAI_DEPLOYMENT_NAME
 
     async def initialize(self) -> None:
-        """Initialize the Azure OpenAI client."""
+        """Initialize the AI client via Foundry SDK 2.x or direct OpenAI."""
         credential = DefaultAzureCredential()
-        token_provider = get_bearer_token_provider(
-            credential, "https://cognitiveservices.azure.com/.default"
-        )
-        self._client = AzureOpenAI(
-            azure_endpoint=settings.OPENAI_ENDPOINT,
-            azure_ad_token_provider=token_provider,
-            api_version=settings.OPENAI_API_VERSION,
-        )
-        logger.info("Azure OpenAI client initialized (model=%s)", settings.OPENAI_DEPLOYMENT_NAME)
 
-    def _ensure_client(self) -> AzureOpenAI:
-        if self._client is None:
-            raise RuntimeError("OpenAIService not initialized")
-        return self._client
+        if settings.FOUNDRY_PROJECT_CONNECTION_STRING:
+            self._project_client = AIProjectClient.from_connection_string(
+                conn_str=settings.FOUNDRY_PROJECT_CONNECTION_STRING,
+                credential=credential,
+            )
+            logger.info(
+                "Foundry SDK 2.x AIProjectClient initialized (deployment=%s)",
+                self._deployment,
+            )
+        else:
+            from azure.identity import get_bearer_token_provider
+
+            token_provider = get_bearer_token_provider(
+                credential, "https://cognitiveservices.azure.com/.default"
+            )
+            self._openai_client = AzureOpenAI(
+                azure_endpoint=settings.OPENAI_ENDPOINT,
+                azure_ad_token_provider=token_provider,
+                api_version=settings.OPENAI_API_VERSION,
+            )
+            logger.info(
+                "Direct AzureOpenAI client initialized (deployment=%s)",
+                self._deployment,
+            )
+
+    def _get_inference_client(self) -> AzureOpenAI:
+        """Return an OpenAI-compatible inference client.
+
+        Prefers Foundry SDK 2.x AIProjectClient.inference.get_azure_openai_client(),
+        falling back to the direct AzureOpenAI client.
+        """
+        if self._project_client is not None:
+            return self._project_client.inference.get_azure_openai_client()
+        if self._openai_client is not None:
+            return self._openai_client
+        raise RuntimeError("OpenAIService not initialized — call initialize() first")
 
     async def generate_report(
         self,
@@ -46,7 +81,7 @@ class OpenAIService:
         body_region: str = "",
     ) -> dict[str, str]:
         """Generate a structured clinical report from dictation."""
-        client = self._ensure_client()
+        client = self._get_inference_client()
 
         system_prompt = self._build_system_prompt(style_instructions, grounding_rules)
         messages: list[dict[str, str]] = [
@@ -65,7 +100,7 @@ class OpenAIService:
         messages.append({"role": "user", "content": user_content})
 
         response = client.chat.completions.create(
-            model=settings.OPENAI_DEPLOYMENT_NAME,
+            model=self._deployment,
             messages=messages,
             temperature=0.3,
             max_tokens=2000,
@@ -91,10 +126,10 @@ class OpenAIService:
         max_tokens: int = 2000,
     ) -> dict[str, Any]:
         """Generic JSON-response call used by validator and reviewer agents."""
-        client = self._ensure_client()
+        client = self._get_inference_client()
 
         response = client.chat.completions.create(
-            model=settings.OPENAI_DEPLOYMENT_NAME,
+            model=self._deployment,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},

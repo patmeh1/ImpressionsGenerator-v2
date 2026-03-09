@@ -4,6 +4,8 @@ azure-identity
 azure-cosmos
 azure-storage-blob
 azure-search-documents
+azure-ai-projects>=1.0.0b9
+agent-framework-core
 openai
 python-multipart
 python-jose[cryptography]

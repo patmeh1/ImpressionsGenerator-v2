@@ -1,11 +1,11 @@
-"""Supervisor Agent — orchestrates the multi-agent pipeline."""
+"""Supervisor Agent — MAF orchestration with Foundry SDK 2.x tool integration."""
 
 import logging
 from typing import Any
 
 from opentelemetry import trace
 
-from app.agents.base import AgentResult, BaseAgent
+from app.agents.base import AgentCapability, AgentResult, BaseAgent
 from app.agents.clinical_rag import ClinicalRAGAgent
 from app.agents.clinical_reviewer import ClinicalReviewerAgent
 from app.agents.grounding_validator import GroundingValidatorAgent
@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 class SupervisorAgent(BaseAgent):
     """
-    Orchestrates the full multi-agent report generation pipeline.
+    MAF Supervisor — orchestrates the multi-agent pipeline using
+    Microsoft Agent Framework patterns with Azure AI Foundry SDK 2.x
+    tool integration.
 
     Implements Sequential + Peer Review pattern:
     1. Style Analyst → extracts doctor writing style
@@ -29,8 +31,8 @@ class SupervisorAgent(BaseAgent):
     5. Clinical Reviewer → peer reviews quality
     6. Decision: accept or send back for revision
 
-    If grounding or review fails, routes output back to Report Writer
-    with specific feedback for iterative refinement.
+    Each sub-agent registers its capabilities as MAF tool definitions
+    that are aggregated by the supervisor for OpenAI function-calling.
     """
 
     def __init__(self) -> None:
@@ -42,6 +44,102 @@ class SupervisorAgent(BaseAgent):
         self.clinical_reviewer = ClinicalReviewerAgent()
         self.max_revisions = settings.AGENT_MAX_REVISIONS
         self.grounding_threshold = settings.GROUNDING_CONFIDENCE_THRESHOLD
+
+        # Register sub-agents as MAF capabilities for Foundry SDK 2.x
+        self._sub_agents: dict[str, BaseAgent] = {
+            "style_analyst": self.style_analyst,
+            "clinical_rag": self.clinical_rag,
+            "report_writer": self.report_writer,
+            "grounding_validator": self.grounding_validator,
+            "clinical_reviewer": self.clinical_reviewer,
+        }
+        self._register_agent_capabilities()
+
+    def _register_agent_capabilities(self) -> None:
+        """Register each sub-agent's capabilities as MAF tool definitions."""
+        self.register_capability(AgentCapability(
+            name="analyze_style",
+            description="Extract doctor writing style from historical notes",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "doctor_id": {"type": "string", "description": "Doctor identifier"},
+                },
+                "required": ["doctor_id"],
+            },
+        ))
+        self.register_capability(AgentCapability(
+            name="retrieve_examples",
+            description="Retrieve relevant clinical examples via RAG",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "doctor_id": {"type": "string"},
+                },
+                "required": ["query"],
+            },
+        ))
+        self.register_capability(AgentCapability(
+            name="generate_report",
+            description="Generate clinical report sections from dictation",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "dictated_text": {"type": "string"},
+                    "style_instructions": {"type": "string"},
+                },
+                "required": ["dictated_text"],
+            },
+        ))
+        self.register_capability(AgentCapability(
+            name="validate_grounding",
+            description="Validate that generated report is grounded in dictation",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "dictated_text": {"type": "string"},
+                    "findings": {"type": "string"},
+                },
+                "required": ["dictated_text", "findings"],
+            },
+        ))
+        self.register_capability(AgentCapability(
+            name="review_report",
+            description="Peer-review the generated report for clinical accuracy",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "findings": {"type": "string"},
+                    "impressions": {"type": "string"},
+                },
+                "required": ["findings"],
+            },
+        ))
+
+    def get_maf_tool_definitions(self) -> list[dict[str, Any]]:
+        """Return all registered tool definitions for OpenAI function calling."""
+        return self.tool_definitions
+
+    async def route_tool_call(
+        self, tool_name: str, arguments: dict[str, Any]
+    ) -> AgentResult:
+        """Route an OpenAI function-calling tool call to the appropriate sub-agent."""
+        routing_map = {
+            "analyze_style": "style_analyst",
+            "retrieve_examples": "clinical_rag",
+            "generate_report": "report_writer",
+            "validate_grounding": "grounding_validator",
+            "review_report": "clinical_reviewer",
+        }
+        agent_key = routing_map.get(tool_name)
+        if not agent_key or agent_key not in self._sub_agents:
+            return AgentResult(
+                success=False, error=f"Unknown tool call: {tool_name}"
+            )
+        return await self._sub_agents[agent_key].handle_tool_call(
+            tool_name, arguments
+        )
 
     async def execute(self, context: dict[str, Any]) -> AgentResult:
         with tracer.start_as_current_span(

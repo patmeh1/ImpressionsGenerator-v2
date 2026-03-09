@@ -3,7 +3,7 @@
 A healthcare radiology/oncology AI application that generates clinical report
 sections (findings, impressions, recommendations) in each doctor's unique
 writing style, powered by a **multi-agent pipeline** built on
-**Microsoft Agent Framework (MAF)**.
+**Microsoft Agent Framework (MAF)** with **Azure AI Foundry SDK 2.x**.
 
 ## Architecture
 
@@ -31,7 +31,7 @@ User → FastAPI → MAF Supervisor Agent
 
 ## Tech Stack
 
-- **Backend:** Python 3.11, FastAPI, Microsoft Agent Framework
+- **Backend:** Python 3.11, FastAPI, Microsoft Agent Framework, Azure AI Foundry SDK 2.x
 - **Frontend:** Next.js 14, React 18, TailwindCSS
 - **AI:** Azure OpenAI GPT-5.2 (swedencentral)
 - **Data:** Azure Cosmos DB, Azure AI Search, Azure Blob Storage

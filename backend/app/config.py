@@ -17,10 +17,14 @@ class Settings(BaseSettings):
     BLOB_STORAGE_ACCOUNT_URL: str = ""
     BLOB_CONTAINER_NAME: str = "doctor-notes"
 
-    # Azure OpenAI
+    # Azure OpenAI (fallback when Foundry connection string is not set)
     OPENAI_ENDPOINT: str = ""
     OPENAI_API_VERSION: str = "2025-01-01-preview"
     OPENAI_DEPLOYMENT_NAME: str = "gpt-52"
+
+    # Azure AI Foundry SDK 2.x (azure-ai-projects)
+    FOUNDRY_PROJECT_CONNECTION_STRING: str = ""
+    FOUNDRY_MODEL_DEPLOYMENT: str = "gpt-52"
 
     # Azure AI Search
     AI_SEARCH_ENDPOINT: str = ""
