@@ -3,20 +3,35 @@
 import logging
 from typing import Any
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.entra_id import extract_user_info, validate_token
 
 logger = logging.getLogger(__name__)
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+# Demo fallback user when no auth token is provided
+_DEMO_USER: dict[str, Any] = {
+    "user_id": "demo-admin",
+    "name": "Demo Admin",
+    "email": "demo@impgen.local",
+    "roles": ["Admin"],
+}
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> dict[str, Any]:
-    """Validate the bearer token and return current user info."""
+    """Validate the bearer token and return current user info.
+
+    Falls back to a demo admin user when no token is provided, enabling
+    unauthenticated access for demo/development scenarios.
+    """
+    if credentials is None:
+        return _DEMO_USER
+
     try:
         claims = await validate_token(credentials.credentials)
     except ValueError as e:
