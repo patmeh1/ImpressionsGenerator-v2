@@ -12,7 +12,9 @@ import type {
   PipelineInfo,
 } from '@/lib/types';
 
-const BASE_URL = '/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : '/api';
 
 async function authHeaders(): Promise<HeadersInit> {
   const token = await getAccessToken();
