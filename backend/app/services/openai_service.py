@@ -59,6 +59,12 @@ class OpenAIService:
                 self._deployment,
             )
 
+    async def _ensure_initialized(self) -> None:
+        """Lazy-initialize if startup initialization was skipped."""
+        if self._project_client is None and self._openai_client is None:
+            logger.info("OpenAIService not initialized — performing lazy init")
+            await self.initialize()
+
     def _get_inference_client(self) -> AzureOpenAI:
         """Return an OpenAI-compatible inference client.
 
@@ -81,6 +87,7 @@ class OpenAIService:
         body_region: str = "",
     ) -> dict[str, str]:
         """Generate a structured clinical report from dictation."""
+        await self._ensure_initialized()
         client = self._get_inference_client()
 
         system_prompt = self._build_system_prompt(style_instructions, grounding_rules)
@@ -99,13 +106,16 @@ class OpenAIService:
 
         messages.append({"role": "user", "content": user_content})
 
-        response = client.chat.completions.create(
-            model=self._deployment,
-            messages=messages,
-            temperature=0.3,
-            max_tokens=2000,
-            response_format={"type": "json_object"},
-        )
+        try:
+            response = client.chat.completions.create(
+                model=self._deployment,
+                messages=messages,
+                max_completion_tokens=2000,
+                response_format={"type": "json_object"},
+            )
+        except Exception as e:
+            logger.error("OpenAI chat completion failed: %s", e)
+            raise
 
         content = response.choices[0].message.content
         if not content:
@@ -123,9 +133,10 @@ class OpenAIService:
         system_prompt: str,
         user_message: str,
         temperature: float = 0.2,
-        max_tokens: int = 2000,
+        max_completion_tokens: int = 2000,
     ) -> dict[str, Any]:
         """Generic JSON-response call used by validator and reviewer agents."""
+        await self._ensure_initialized()
         client = self._get_inference_client()
 
         response = client.chat.completions.create(
@@ -134,8 +145,7 @@ class OpenAIService:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            temperature=temperature,
-            max_tokens=max_tokens,
+            max_completion_tokens=max_completion_tokens,
             response_format={"type": "json_object"},
         )
 

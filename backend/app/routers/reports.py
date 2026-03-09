@@ -13,16 +13,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 
-@router.get("", response_model=list[ReportResponse])
+@router.get("")
 async def list_reports(
     doctor_id: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    search: str | None = Query(default=None),
+    report_type: str | None = Query(default=None),
+    status: str | None = Query(default=None),
     user: dict[str, Any] = Depends(get_current_user),
-) -> list[dict[str, Any]]:
-    """List reports. Admins see all; doctors see only their own."""
+) -> dict[str, Any]:
+    """List reports with pagination. Admins see all; doctors see only their own."""
     if "Admin" in user.get("roles", []):
-        return await cosmos_service.list_reports(doctor_id=doctor_id)
+        all_reports = await cosmos_service.list_reports(doctor_id=doctor_id)
     else:
-        return await cosmos_service.list_reports(doctor_id=user["user_id"])
+        all_reports = await cosmos_service.list_reports(doctor_id=user["user_id"])
+
+    # Apply filters
+    if search:
+        q = search.lower()
+        all_reports = [r for r in all_reports if q in r.get("input_text", "").lower() or q in r.get("findings", "").lower()]
+    if report_type:
+        all_reports = [r for r in all_reports if r.get("report_type") == report_type]
+    if status:
+        all_reports = [r for r in all_reports if r.get("status") == status]
+
+    total = len(all_reports)
+    start = (page - 1) * page_size
+    items = all_reports[start : start + page_size]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/{report_id}", response_model=ReportResponse)

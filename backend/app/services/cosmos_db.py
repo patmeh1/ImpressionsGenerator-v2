@@ -47,6 +47,11 @@ class CosmosDBService:
 
         logger.info("Cosmos DB initialized with database '%s'", settings.COSMOS_DATABASE_NAME)
 
+    async def _ensure_initialized(self) -> None:
+        """Lazy-initialize if startup initialization was skipped."""
+        if not self._containers:
+            await self.initialize()
+
     def _container(self, name: str) -> ContainerProxy:
         if name not in self._containers:
             raise RuntimeError(f"Container '{name}' not initialized")
@@ -55,6 +60,7 @@ class CosmosDBService:
     # --- Doctor operations ---
 
     async def create_doctor(self, data: dict[str, Any]) -> dict[str, Any]:
+        await self._ensure_initialized()
         doc = {
             "id": str(uuid.uuid4()),
             **data,
@@ -65,6 +71,7 @@ class CosmosDBService:
         return doc
 
     async def get_doctor(self, doctor_id: str) -> dict[str, Any] | None:
+        await self._ensure_initialized()
         try:
             return self._container("doctors").read_item(
                 item=doctor_id, partition_key=doctor_id
@@ -73,6 +80,7 @@ class CosmosDBService:
             return None
 
     async def list_doctors(self) -> list[dict[str, Any]]:
+        await self._ensure_initialized()
         query = "SELECT * FROM c ORDER BY c.created_at DESC"
         return list(self._container("doctors").query_items(
             query=query, enable_cross_partition_query=True
@@ -140,6 +148,7 @@ class CosmosDBService:
     # --- Report operations ---
 
     async def create_report(self, data: dict[str, Any]) -> dict[str, Any]:
+        await self._ensure_initialized()
         now = datetime.utcnow().isoformat()
         doc = {
             "id": str(uuid.uuid4()),
@@ -164,6 +173,7 @@ class CosmosDBService:
     async def list_reports(
         self, doctor_id: str | None = None
     ) -> list[dict[str, Any]]:
+        await self._ensure_initialized()
         if doctor_id:
             query = "SELECT * FROM c WHERE c.doctor_id = @doctor_id ORDER BY c.created_at DESC"
             params = [{"name": "@doctor_id", "value": doctor_id}]
@@ -216,6 +226,7 @@ class CosmosDBService:
     # --- Style Profile operations ---
 
     async def get_style_profile(self, doctor_id: str) -> dict[str, Any] | None:
+        await self._ensure_initialized()
         query = "SELECT * FROM c WHERE c.doctor_id = @doctor_id"
         params = [{"name": "@doctor_id", "value": doctor_id}]
         items = list(self._container("style_profiles").query_items(
@@ -224,6 +235,7 @@ class CosmosDBService:
         return items[0] if items else None
 
     async def upsert_style_profile(self, data: dict[str, Any]) -> dict[str, Any]:
+        await self._ensure_initialized()
         data["updated_at"] = datetime.utcnow().isoformat()
         if "id" not in data:
             data["id"] = str(uuid.uuid4())
