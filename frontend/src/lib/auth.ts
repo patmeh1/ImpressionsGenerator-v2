@@ -7,9 +7,13 @@ import {
   RedirectRequest,
 } from '@azure/msal-browser';
 
+const clientId = process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || '';
+
+export const isMsalConfigured = Boolean(clientId);
+
 const msalConfig: Configuration = {
   auth: {
-    clientId: process.env.NEXT_PUBLIC_AZURE_CLIENT_ID || '',
+    clientId: clientId || 'demo-placeholder-not-used',
     authority: `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_AZURE_TENANT_ID || 'common'}`,
     redirectUri: process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000',
     postLogoutRedirectUri: '/',

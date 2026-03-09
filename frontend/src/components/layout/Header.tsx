@@ -1,12 +1,36 @@
 'use client';
 
 import React from 'react';
-import { useMsal } from '@azure/msal-react';
+import { isMsalConfigured } from '@/lib/auth';
 import { Moon, Sun, LogOut, Stethoscope } from 'lucide-react';
 
-export default function Header() {
+// Separate component that uses MSAL hooks — only rendered inside MsalProvider
+function MsalUserMenu() {
+  const { useMsal } = require('@azure/msal-react');
   const { instance, accounts } = useMsal();
-  const account = accounts[0];
+  const account = accounts[0] || null;
+
+  if (!account) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-semibold">
+        {(account.name || account.username || '?').charAt(0).toUpperCase()}
+      </div>
+      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden md:inline">
+        {account.name || account.username}
+      </span>
+      <button
+        onClick={() => instance.logoutRedirect()}
+        className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        title="Sign out"
+      >
+        <LogOut size={16} />
+      </button>
+    </div>
+  );
+}
+
+export default function Header() {
 
   const [dark, setDark] = React.useState(false);
 
@@ -23,10 +47,6 @@ export default function Header() {
     setDark(next);
     document.documentElement.classList.toggle('dark', next);
     localStorage.setItem('theme', next ? 'dark' : 'light');
-  };
-
-  const handleLogout = () => {
-    instance.logoutRedirect();
   };
 
   return (
@@ -47,23 +67,7 @@ export default function Header() {
           {dark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
-        {account && (
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-semibold">
-              {(account.name || account.username || '?').charAt(0).toUpperCase()}
-            </div>
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden md:inline">
-              {account.name || account.username}
-            </span>
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="Sign out"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        )}
+        {isMsalConfigured && <MsalUserMenu />}
       </div>
     </header>
   );

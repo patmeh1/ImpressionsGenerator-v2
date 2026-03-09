@@ -1,10 +1,9 @@
 'use client';
 
 import React from 'react';
-import { useIsAuthenticated } from '@azure/msal-react';
-import { loginPopup } from '@/lib/auth';
+import { isMsalConfigured } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { Stethoscope, ShieldCheck, Sparkles, Users, LogIn } from 'lucide-react';
+import { Stethoscope, ShieldCheck, Sparkles, Users, ArrowRight } from 'lucide-react';
 
 const features = [
   {
@@ -28,16 +27,10 @@ const features = [
 ];
 
 export default function LandingPage() {
-  const isAuthenticated = useIsAuthenticated();
   const router = useRouter();
 
-  React.useEffect(() => {
-    if (isAuthenticated) router.push('/dashboard');
-  }, [isAuthenticated, router]);
-
-  const handleLogin = async () => {
-    const account = await loginPopup();
-    if (account) router.push('/dashboard');
+  const handleEnter = () => {
+    router.push('/generate');
   };
 
   return (
@@ -57,11 +50,11 @@ export default function LandingPage() {
           Paste your findings, get polished impressions in seconds.
         </p>
         <button
-          onClick={handleLogin}
+          onClick={handleEnter}
           className="btn-primary text-lg px-8 py-3 inline-flex items-center gap-2"
         >
-          <LogIn size={20} />
-          Sign In with Microsoft
+          <ArrowRight size={20} />
+          Get Started
         </button>
       </div>
 
