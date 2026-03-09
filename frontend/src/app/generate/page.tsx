@@ -151,18 +151,19 @@ export default function GeneratePage() {
           </div>
         </div>
 
-        {/* Pipeline status sidebar */}
-        <div>
-          {generating && (
-            <AgentPipelineView trace={[]} isRunning={true} />
-          )}
+        {/* Pipeline status sidebar — always visible */}
+        <div className="space-y-4">
+          <AgentPipelineView
+            trace={generatedReport?.pipeline_trace || []}
+            isRunning={generating}
+          />
           {!generating && !generatedReport && (
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">Pipeline Agents</h3>
-              <p className="text-xs text-gray-500">
-                Your report will be processed by 5 specialized AI agents:
-                Style Analyst, RAG, Report Writer, Grounding Validator, and Clinical Reviewer,
-                all orchestrated by a Supervisor agent.
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-2">How It Works</h3>
+              <p className="text-xs text-gray-500 dark:text-slate-400 leading-relaxed">
+                Your dictation is processed by 5 specialized AI agents sequentially.
+                Click &quot;Generate&quot; to watch each agent work in real-time.
+                Expand any agent to see inter-agent communication details.
               </p>
             </div>
           )}
