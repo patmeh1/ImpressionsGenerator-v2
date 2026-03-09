@@ -62,7 +62,7 @@ export default function ReportViewer({ report }: ReportViewerProps) {
 
         {/* Agent pipeline & scores sidebar */}
         <div className="space-y-4">
-          <AgentPipelineView trace={report.pipeline_trace || []} />
+          <AgentPipelineView trace={report.pipeline_trace || []} decision={report.decision} revisions={report.revisions} />
           {report.grounding && <GroundingScoreCard grounding={report.grounding} />}
           {report.review && <ReviewScoreCard review={report.review} />}
         </div>

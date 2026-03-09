@@ -75,6 +75,8 @@ interface AgentPipelineViewProps {
   trace: AgentTraceEntry[];
   isRunning?: boolean;
   currentAgent?: string;
+  decision?: string;
+  revisions?: number;
 }
 
 function ConfidenceBadge({ confidence }: { confidence: number }) {
@@ -90,7 +92,7 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   );
 }
 
-export default function AgentPipelineView({ trace, isRunning, currentAgent }: AgentPipelineViewProps) {
+export default function AgentPipelineView({ trace, isRunning, currentAgent, decision, revisions }: AgentPipelineViewProps) {
   const agentOrder = ['style_analyst', 'clinical_rag', 'report_writer', 'grounding_validator', 'clinical_reviewer'];
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [simulatedStep, setSimulatedStep] = useState(0);
@@ -319,27 +321,60 @@ export default function AgentPipelineView({ trace, isRunning, currentAgent }: Ag
         <div className="flex justify-center py-0.5">
           <ArrowDown className="w-3 h-3 text-gray-300 dark:text-slate-600" />
         </div>
-        <div className={`rounded-md border p-2.5 ${
-          isRunning
-            ? 'border-gray-200 bg-gray-50 dark:bg-slate-800'
-            : trace.length > 0
-              ? 'border-green-200 bg-green-50 dark:bg-green-900/10'
-              : 'border-gray-200 bg-gray-50 dark:bg-slate-800'
-        }`}>
-          <div className="flex items-center gap-2">
-            {isRunning ? (
-              <div className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-slate-600" />
-            ) : trace.length > 0 ? (
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            ) : (
-              <div className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-slate-600" />
-            )}
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-slate-100">Supervisor</p>
-              <p className="text-xs text-gray-500 dark:text-slate-400">Decision: accept / revise / reject</p>
+        {(() => {
+          const allSimDone = isRunning && simulatedStep >= agentOrder.reduce((s, a) => s + (AGENT_MESSAGES[a]?.length || 0), 0);
+          const isComplete = !isRunning && trace.length > 0;
+          const isAccepted = decision === 'accepted';
+          const isWarning = decision === 'accepted_with_warnings';
+          return (
+            <div className={`rounded-md border p-2.5 transition-all ${
+              allSimDone
+                ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-300'
+                : isComplete
+                  ? isAccepted
+                    ? 'border-green-200 bg-green-50 dark:bg-green-900/10'
+                    : isWarning
+                      ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10'
+                      : 'border-green-200 bg-green-50 dark:bg-green-900/10'
+                  : 'border-gray-200 bg-gray-50 dark:bg-slate-800 dark:border-slate-700'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {allSimDone ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                  ) : isComplete ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : isRunning ? (
+                    <div className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-slate-600" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-slate-600" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">Supervisor</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      {allSimDone
+                        ? 'Evaluating agent results...'
+                        : isComplete && decision
+                          ? `Decision: ${decision}${revisions ? ` (${revisions} revision${revisions > 1 ? 's' : ''})` : ''}`
+                          : 'Decision: accept / revise / reject'}
+                    </p>
+                  </div>
+                </div>
+                {isComplete && decision && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    isAccepted
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      : isWarning
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                        : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {isAccepted ? 'ACCEPTED' : isWarning ? 'ACCEPTED*' : decision.toUpperCase()}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
     </div>
   );

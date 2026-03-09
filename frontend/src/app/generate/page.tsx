@@ -156,6 +156,8 @@ export default function GeneratePage() {
           <AgentPipelineView
             trace={generatedReport?.pipeline_trace || []}
             isRunning={generating}
+            decision={generatedReport?.decision}
+            revisions={generatedReport?.revisions}
           />
           {!generating && !generatedReport && (
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
